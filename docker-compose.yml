@@ -1,0 +1,141 @@
+# NOTE: this is horribly insecure. Don't ever use this configuration for anything that 
+# handles real funds. 
+
+# This is based on a config found here: 
+
+services:
+  mainchain: 
+    networks: [drivechain, default]
+
+    # 8383 = P2P
+    ports: [ "8383:8383"] 
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "-X", "POST", "-u", "user:password", "http://localhost:8332"]
+
+
+    # https://github.com/layerTwo-Labs/mainchain/
+    image: barebitcoin/mainchain:c20ad4189
+    volumes: [mainchain-data:/root/drivechain]
+    restart: unless-stopped
+    command: 
+      - drivechaind
+      - -printtoconsole
+      - -rpcuser=user
+      - -rpcpassword=password
+      - -server
+      - -addnode=172.105.148.135
+      - -listen
+      - -rpcport=8332
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -debug=rpc
+      - -debug=p2p
+      - -txindex
+
+  # TODO: how do we enable SSL here?
+  electrs: 
+    # https://github.com/torkelrogstad/electrs
+    image: barebitcoin/mempool-electrs:08d8bea
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/blocks/tip/hash"]
+    environment:
+      RUST_BACKTRACE: 1
+
+    restart: unless-stopped
+    ports:
+      - 50001:50001 # Electrum port!
+
+    volumes: [electrs-data:/app/db]
+
+    # https://github.com/Blockstream/esplora?tab=readme-ov-file#how-to-run-the-explorer-for-bitcoin-mainnet
+    command: 
+      - -vvvv # really verbose logging!
+      - --timestamp
+      - --cookie=user:password
+      - --daemon-rpc-addr=mainchain:8332
+      - --jsonrpc-import
+      - --db-dir=/app/db
+      - --network=mainnet # Strictly speaking not correct!
+      - --http-addr=0.0.0.0:3000
+      - --electrum-rpc-addr=0.0.0.0:50001
+      - --electrum-txs-limit=1000000
+      - --cors=*
+      - --utxos-limit=1000000
+
+  web:
+    environment:
+      FRONTEND_HTTP_PORT: 8080
+      BACKEND_MAINNET_HTTP_HOST: api
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080"]
+    image: mempool/frontend:latest
+    restart: on-failure
+    stop_grace_period: 1m
+    command: "./wait-for db:3306 --timeout=720 -- nginx -g 'daemon off;'"
+    ports: [8080:8080]
+
+  api:
+    depends_on: [db]
+
+    # conf: https://github.com/mempool/mempool/blob/e3c3f31ddbf9543db12ef4f7e5032566757d31f9/backend/mempool-config.sample.json#
+    environment:
+      MEMPOOL_NETWORK: mainnet # don't know if this really means anything?
+      MEMPOOL_BACKEND: "electrum"
+      ELECTRUM_HOST: electrs
+      ELECTRUM_PORT: 50001
+      ELECTRUM_TLS_ENABLED: "false"
+      CORE_RPC_HOST: mainchain 
+      CORE_RPC_PORT: 8332
+      CORE_RPC_USERNAME: user
+      CORE_RPC_PASSWORD: password
+      DATABASE_ENABLED: "true"
+      DATABASE_HOST: "db"
+      DATABASE_DATABASE: "mempool"
+      DATABASE_USERNAME: "mempool"
+      DATABASE_PASSWORD: "mempool"
+      STATISTICS_ENABLED: "true"
+      FIAT_PRICE_ENABLED: false 
+
+    # Repo: https://github.com/torkelrogstad/mempool
+    #
+    # ./docker/init.sh 
+    # docker buildx build \
+    #     --platform linux/amd64 \
+    #     -t barebitcoin/mempool-backend:$(git rev-parse --short HEAD) \
+    #     --build-context=backend=./backend \
+    #     --build-context=rustgbt=./rust \
+    #     --file docker/backend/Dockerfile ./backend
+    image: barebitcoin/mempool-backend:e991d0fa4
+    restart: on-failure
+    stop_grace_period: 1m
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "localhost:8999/api/v1/backend-info"]
+    command: "./wait-for-it.sh db:3306 --timeout=720 --strict -- ./start.sh"
+    volumes:
+      - api-data:/backend/cache
+
+  db:
+    environment:
+      MYSQL_DATABASE: "mempool"
+      MYSQL_USER: "mempool"
+      MYSQL_PASSWORD: "mempool"
+      MYSQL_ROOT_PASSWORD: "admin"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mempool", "-pmempool"]
+    image: mariadb:10.5.21
+    restart: on-failure
+    stop_grace_period: 1m
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+networks:
+  # Set up such that other containers in other projects can connect
+  drivechain:
+    name: drivechain-network
+
+
+volumes: 
+  mainchain-data: 
+  mysql-data:
+  api-data:
+  electrs-data:
