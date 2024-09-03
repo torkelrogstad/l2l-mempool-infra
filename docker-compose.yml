@@ -1,23 +1,32 @@
-# NOTE: this is horribly insecure. Don't ever use this configuration for anything that 
-# handles real funds. 
+# NOTE: this is horribly insecure. Don't ever use this configuration for anything that
+# handles real funds.
 
-# This is based on a config found here: 
+name: drivechain-mempool
 
 services:
-  mainchain: 
+  mainchain:
     networks: [drivechain, default]
 
     # 8383 = P2P
-    ports: [ "8383:8383"] 
+    ports: ["8383:8383"]
     healthcheck:
-      test: ["CMD", "curl", "--fail", "-X", "POST", "-u", "user:password", "http://localhost:8332"]
-
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "-X",
+          "POST",
+          "-u",
+          "user:password",
+          "http://localhost:8332",
+        ]
 
     # https://github.com/layerTwo-Labs/mainchain/
     image: barebitcoin/mainchain:c20ad4189
     volumes: [mainchain-data:/root/drivechain]
     restart: unless-stopped
-    command: 
+    command:
       - drivechaind
       - -printtoconsole
       - -rpcuser=user
@@ -33,7 +42,7 @@ services:
       - -txindex
 
   # TODO: how do we enable SSL here?
-  electrs: 
+  electrs:
     # https://github.com/torkelrogstad/electrs
     image: barebitcoin/mempool-electrs:08d8bea
     healthcheck:
@@ -48,7 +57,7 @@ services:
     volumes: [electrs-data:/app/db]
 
     # https://github.com/Blockstream/esplora?tab=readme-ov-file#how-to-run-the-explorer-for-bitcoin-mainnet
-    command: 
+    command:
       - -vvvv # really verbose logging!
       - --timestamp
       - --cookie=user:password
@@ -84,7 +93,7 @@ services:
       ELECTRUM_HOST: electrs
       ELECTRUM_PORT: 50001
       ELECTRUM_TLS_ENABLED: "false"
-      CORE_RPC_HOST: mainchain 
+      CORE_RPC_HOST: mainchain
       CORE_RPC_PORT: 8332
       CORE_RPC_USERNAME: user
       CORE_RPC_PASSWORD: password
@@ -94,11 +103,11 @@ services:
       DATABASE_USERNAME: "mempool"
       DATABASE_PASSWORD: "mempool"
       STATISTICS_ENABLED: "true"
-      FIAT_PRICE_ENABLED: false 
+      FIAT_PRICE_ENABLED: false
 
     # Repo: https://github.com/torkelrogstad/mempool
     #
-    # ./docker/init.sh 
+    # ./docker/init.sh
     # docker buildx build \
     #     --platform linux/amd64 \
     #     -t barebitcoin/mempool-backend:$(git rev-parse --short HEAD) \
@@ -121,7 +130,17 @@ services:
       MYSQL_PASSWORD: "mempool"
       MYSQL_ROOT_PASSWORD: "admin"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "mempool", "-pmempool"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "mempool",
+          "-pmempool",
+        ]
     image: mariadb:10.5.21
     restart: on-failure
     stop_grace_period: 1m
@@ -133,9 +152,8 @@ networks:
   drivechain:
     name: drivechain-network
 
-
-volumes: 
-  mainchain-data: 
+volumes:
+  mainchain-data:
   mysql-data:
   api-data:
   electrs-data:
