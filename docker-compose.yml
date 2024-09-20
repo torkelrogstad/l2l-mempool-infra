@@ -78,7 +78,7 @@ services:
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080"]
     image: mempool/frontend:latest
-    restart: on-failure
+    restart: unless-stopped
     stop_grace_period: 1m
     command: "./wait-for db:3306 --timeout=720 -- nginx -g 'daemon off;'"
     ports: [8080:8080]
@@ -115,7 +115,7 @@ services:
     #     --build-context=rustgbt=./rust \
     #     --file docker/backend/Dockerfile ./backend
     image: barebitcoin/mempool-backend:e991d0fa4
-    restart: on-failure
+    restart: unless-stopped
     stop_grace_period: 1m
     healthcheck:
       test: ["CMD", "curl", "--fail", "localhost:8999/api/v1/backend-info"]
@@ -142,7 +142,7 @@ services:
           "-pmempool",
         ]
     image: mariadb:10.5.21
-    restart: on-failure
+    restart: unless-stopped
     stop_grace_period: 1m
     volumes:
       - mysql-data:/var/lib/mysql
