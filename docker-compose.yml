@@ -23,22 +23,26 @@ services:
         ]
 
     # https://github.com/layerTwo-Labs/mainchain/
-    image: barebitcoin/mainchain:c20ad4189
+    image: barebitcoin/bitcoin-patched:2024-09-29-signet
     volumes: [mainchain-data:/root/drivechain]
     restart: unless-stopped
     command:
       - drivechaind
-      - -printtoconsole
+      # - -printtoconsole
       - -rpcuser=user
       - -rpcpassword=password
       - -server
-      - -addnode=172.105.148.135
+      - -signet
+      - -signetblocktime=60
+      - -signetchallenge=00141f61d57873d70d28bd28b3c9f9d6bf818b5a0d6a
+      # - -addnode=172.105.148.135
       - -listen
       - -rpcport=8332
+      - -port=8383
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
       - -debug=rpc
-      - -debug=p2p
+      - -debug=net
       - -txindex
 
   # TODO: how do we enable SSL here?
