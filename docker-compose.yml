@@ -47,8 +47,7 @@ services:
 
   # TODO: how do we enable SSL here?
   electrs:
-    # https://github.com/torkelrogstad/electrs
-    image: barebitcoin/mempool-electrs:08d8bea
+    image: mempool/electrs
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:3000/blocks/tip/hash"]
     environment:
@@ -68,12 +67,10 @@ services:
       - --daemon-rpc-addr=mainchain:8332
       - --jsonrpc-import
       - --db-dir=/app/db
-      - --network=mainnet # Strictly speaking not correct!
+      - --network=signet
       - --http-addr=0.0.0.0:3000
       - --electrum-rpc-addr=0.0.0.0:50001
-      - --electrum-txs-limit=1000000
       - --cors=*
-      - --utxos-limit=1000000
 
   web:
     environment:
@@ -81,7 +78,7 @@ services:
       BACKEND_MAINNET_HTTP_HOST: api
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080"]
-    image: mempool/frontend:latest
+    image: mempool/frontend
     restart: unless-stopped
     stop_grace_period: 1m
     command: "./wait-for db:3306 --timeout=720 -- nginx -g 'daemon off;'"
@@ -92,7 +89,7 @@ services:
 
     # conf: https://github.com/mempool/mempool/blob/e3c3f31ddbf9543db12ef4f7e5032566757d31f9/backend/mempool-config.sample.json#
     environment:
-      MEMPOOL_NETWORK: mainnet # don't know if this really means anything?
+      MEMPOOL_NETWORK: signet
       MEMPOOL_BACKEND: "electrum"
       ELECTRUM_HOST: electrs
       ELECTRUM_PORT: 50001
@@ -109,16 +106,7 @@ services:
       STATISTICS_ENABLED: "true"
       FIAT_PRICE_ENABLED: false
 
-    # Repo: https://github.com/torkelrogstad/mempool
-    #
-    # ./docker/init.sh
-    # docker buildx build \
-    #     --platform linux/amd64 \
-    #     -t barebitcoin/mempool-backend:$(git rev-parse --short HEAD) \
-    #     --build-context=backend=./backend \
-    #     --build-context=rustgbt=./rust \
-    #     --file docker/backend/Dockerfile ./backend
-    image: barebitcoin/mempool-backend:e991d0fa4
+    image: mempool/backend
     restart: unless-stopped
     stop_grace_period: 1m
     healthcheck:
