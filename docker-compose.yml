@@ -134,6 +134,7 @@ networks:
   # Set up such that other containers in other projects can connect
   drivechain:
     name: drivechain-network
+    external: true
 
 volumes:
   mainchain-data:
