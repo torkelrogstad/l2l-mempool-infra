@@ -6,38 +6,28 @@ name: drivechain-mempool
 services:
   mainchain:
     networks: [drivechain, default]
-
-    # 8383 = P2P
-    ports: ["8383:8383"]
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "--fail",
-          "-X",
-          "POST",
-          "-u",
-          "user:password",
-          "http://localhost:8332",
-        ]
+      test: ["CMD", "curl", "--fail", "http://localhost:38332"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-    # https://github.com/layerTwo-Labs/mainchain/
+    # 8383 = P2P, 38332 = RPC
+    ports: ["8383:8383", "38332:38332"]
+
+    # https://github.com/barebitcoin/bitcoin-patched
     image: barebitcoin/bitcoin-patched:2024-09-29-signet
     volumes: [mainchain-data:/root/drivechain]
     restart: unless-stopped
     command:
       - drivechaind
-      # - -printtoconsole
       - -rpcuser=user
       - -rpcpassword=password
       - -server
       - -signet
       - -signetblocktime=60
       - -signetchallenge=00141f61d57873d70d28bd28b3c9f9d6bf818b5a0d6a
-      # - -addnode=172.105.148.135
       - -listen
-      - -rpcport=8332
       - -port=8383
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
@@ -64,7 +54,7 @@ services:
       - -vvvv # really verbose logging!
       - --timestamp
       - --cookie=user:password
-      - --daemon-rpc-addr=mainchain:8332
+      - --daemon-rpc-addr=mainchain:38332
       - --jsonrpc-import
       - --db-dir=/app/db
       - --network=signet
@@ -95,7 +85,7 @@ services:
       ELECTRUM_PORT: 50001
       ELECTRUM_TLS_ENABLED: "false"
       CORE_RPC_HOST: mainchain
-      CORE_RPC_PORT: 8332
+      CORE_RPC_PORT: 38332
       CORE_RPC_USERNAME: user
       CORE_RPC_PASSWORD: password
       DATABASE_ENABLED: "true"
