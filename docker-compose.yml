@@ -7,10 +7,7 @@ services:
   mainchain:
     networks: [drivechain, default]
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:38332"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      test: ["CMD", "/entrypoint.sh", "drivechain-cli", "-rpcuser=user", "-rpcpassword=password", "-signet", "getblockchaininfo"]
 
     # 8383 = P2P, 38332 = RPC
     ports: ["8383:8383", "38332:38332"]
