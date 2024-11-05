@@ -6,51 +6,40 @@ name: drivechain-mempool
 services:
   mainchain:
     networks: [drivechain, default]
+    healthcheck:
+      test: ["CMD", "/entrypoint.sh", "drivechain-cli", "-rpcuser=user", "-rpcpassword=password", "-signet", "getblockchaininfo"]
 
     # 8383 = P2P
     ports: ["8383:8383"]
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "--fail",
-          "-X",
-          "POST",
-          "-u",
-          "user:password",
-          "http://localhost:8332",
-        ]
 
-    # https://github.com/layerTwo-Labs/mainchain/
+    # https://github.com/barebitcoin/bitcoin-patched
     image: barebitcoin/bitcoin-patched:2024-09-29-signet
     volumes: [mainchain-data:/root/drivechain]
     restart: unless-stopped
     command:
       - drivechaind
-      # - -printtoconsole
       - -rpcuser=user
       - -rpcpassword=password
       - -server
       - -signet
       - -signetblocktime=60
       - -signetchallenge=00141f61d57873d70d28bd28b3c9f9d6bf818b5a0d6a
-      # - -addnode=172.105.148.135
+      - -acceptnonstdtxn
       - -listen
-      - -rpcport=8332
       - -port=8383
       - -rpcbind=0.0.0.0
       - -rpcallowip=0.0.0.0/0
       - -debug=rpc
       - -debug=net
       - -txindex
+      - -fallbackfee=0.00021
 
   # TODO: how do we enable SSL here?
   electrs:
-    # https://github.com/torkelrogstad/electrs
-    image: barebitcoin/mempool-electrs:08d8bea
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:3000/blocks/tip/hash"]
+    image: mempool/electrs
+    # TODO: find something that works here with what's installed on the box
+    # healthcheck:
+    #  test: ["CMD", "curl", "--fail", "http://localhost:3000/blocks/tip/hash"]
     environment:
       RUST_BACKTRACE: 1
 
@@ -65,15 +54,13 @@ services:
       - -vvvv # really verbose logging!
       - --timestamp
       - --cookie=user:password
-      - --daemon-rpc-addr=mainchain:8332
+      - --daemon-rpc-addr=mainchain:38332
       - --jsonrpc-import
       - --db-dir=/app/db
-      - --network=mainnet # Strictly speaking not correct!
+      - --network=signet
       - --http-addr=0.0.0.0:3000
       - --electrum-rpc-addr=0.0.0.0:50001
-      - --electrum-txs-limit=1000000
       - --cors=*
-      - --utxos-limit=1000000
 
   web:
     environment:
@@ -81,7 +68,7 @@ services:
       BACKEND_MAINNET_HTTP_HOST: api
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080"]
-    image: mempool/frontend:latest
+    image: mempool/frontend
     restart: unless-stopped
     stop_grace_period: 1m
     command: "./wait-for db:3306 --timeout=720 -- nginx -g 'daemon off;'"
@@ -92,13 +79,13 @@ services:
 
     # conf: https://github.com/mempool/mempool/blob/e3c3f31ddbf9543db12ef4f7e5032566757d31f9/backend/mempool-config.sample.json#
     environment:
-      MEMPOOL_NETWORK: mainnet # don't know if this really means anything?
+      MEMPOOL_NETWORK: signet
       MEMPOOL_BACKEND: "electrum"
       ELECTRUM_HOST: electrs
       ELECTRUM_PORT: 50001
       ELECTRUM_TLS_ENABLED: "false"
       CORE_RPC_HOST: mainchain
-      CORE_RPC_PORT: 8332
+      CORE_RPC_PORT: 38332
       CORE_RPC_USERNAME: user
       CORE_RPC_PASSWORD: password
       DATABASE_ENABLED: "true"
@@ -109,20 +96,12 @@ services:
       STATISTICS_ENABLED: "true"
       FIAT_PRICE_ENABLED: false
 
-    # Repo: https://github.com/torkelrogstad/mempool
-    #
-    # ./docker/init.sh
-    # docker buildx build \
-    #     --platform linux/amd64 \
-    #     -t barebitcoin/mempool-backend:$(git rev-parse --short HEAD) \
-    #     --build-context=backend=./backend \
-    #     --build-context=rustgbt=./rust \
-    #     --file docker/backend/Dockerfile ./backend
-    image: barebitcoin/mempool-backend:e991d0fa4
+    image: mempool/backend
     restart: unless-stopped
     stop_grace_period: 1m
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "localhost:8999/api/v1/backend-info"]
+    # TODO: find something that works here with what's installed on the box
+    # healthcheck:
+    #  test: ["CMD", "curl", "--fail", "localhost:8999/api/v1/backend-info"]
     command: "./wait-for-it.sh db:3306 --timeout=720 --strict -- ./start.sh"
     volumes:
       - api-data:/backend/cache
@@ -155,6 +134,7 @@ networks:
   # Set up such that other containers in other projects can connect
   drivechain:
     name: drivechain-network
+    external: true
 
 volumes:
   mainchain-data:
