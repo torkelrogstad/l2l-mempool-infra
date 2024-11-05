@@ -9,8 +9,8 @@ services:
     healthcheck:
       test: ["CMD", "/entrypoint.sh", "drivechain-cli", "-rpcuser=user", "-rpcpassword=password", "-signet", "getblockchaininfo"]
 
-    # 8383 = P2P, 38332 = RPC
-    ports: ["8383:8383", "38332:38332"]
+    # 8383 = P2P
+    ports: ["8383:8383"]
 
     # https://github.com/barebitcoin/bitcoin-patched
     image: barebitcoin/bitcoin-patched:2024-09-29-signet
@@ -24,6 +24,7 @@ services:
       - -signet
       - -signetblocktime=60
       - -signetchallenge=00141f61d57873d70d28bd28b3c9f9d6bf818b5a0d6a
+      - -acceptnonstdtxn
       - -listen
       - -port=8383
       - -rpcbind=0.0.0.0
@@ -36,8 +37,9 @@ services:
   # TODO: how do we enable SSL here?
   electrs:
     image: mempool/electrs
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:3000/blocks/tip/hash"]
+    # TODO: find something that works here with what's installed on the box
+    # healthcheck:
+    #  test: ["CMD", "curl", "--fail", "http://localhost:3000/blocks/tip/hash"]
     environment:
       RUST_BACKTRACE: 1
 
@@ -97,8 +99,9 @@ services:
     image: mempool/backend
     restart: unless-stopped
     stop_grace_period: 1m
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "localhost:8999/api/v1/backend-info"]
+    # TODO: find something that works here with what's installed on the box
+    # healthcheck:
+    #  test: ["CMD", "curl", "--fail", "localhost:8999/api/v1/backend-info"]
     command: "./wait-for-it.sh db:3306 --timeout=720 --strict -- ./start.sh"
     volumes:
       - api-data:/backend/cache
