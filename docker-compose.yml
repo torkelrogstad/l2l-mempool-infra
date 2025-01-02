@@ -20,10 +20,11 @@ services:
       - drivechaind
       - -rpcuser=user
       - -rpcpassword=password
+      - -addnode=172.105.148.135:38333
       - -server
       - -signet
       - -signetblocktime=60
-      - -signetchallenge=00141f61d57873d70d28bd28b3c9f9d6bf818b5a0d6a
+      - -signetchallenge=00141551188e5153533b4fdd555449e640d9cc129456
       - -acceptnonstdtxn
       - -listen
       - -port=8383
