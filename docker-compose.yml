@@ -52,7 +52,7 @@ services:
 
     # https://github.com/Blockstream/esplora?tab=readme-ov-file#how-to-run-the-explorer-for-bitcoin-mainnet
     command:
-      - -vvvv # really verbose logging!
+      - -vvv # pretty verbose logging
       - --timestamp
       - --cookie=user:password
       - --daemon-rpc-addr=mainchain:38332
@@ -61,6 +61,7 @@ services:
       - --network=signet
       - --http-addr=0.0.0.0:3000
       - --electrum-rpc-addr=0.0.0.0:50001
+      - --electrum-txs-limit=30000
       - --cors=*
 
   web:
